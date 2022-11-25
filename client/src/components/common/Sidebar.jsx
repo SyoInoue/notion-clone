@@ -8,17 +8,55 @@ import {
 import { Box } from "@mui/system";
 import LogoutOutlindIcon from "@mui/icons-material/LogoutOutlined";
 import AddBoxOutlindIcon from "@mui/icons-material/AddBoxOutlined";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import assets from "../../assets/index.js";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import memoApi from "../../api/memoApi.js";
+import { setMemo } from "../../redux/features/memoSlice.js";
 
 const Sidebar = () => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { memoId } = useParams();
+  const user = useSelector((state) => state.user.value);
+  const memos = useSelector((state) => state.memo.value);
 
   const logout = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
+
+  useEffect(() => {
+    const getMemos = async () => {
+      try {
+        const res = await memoApi.getAll();
+        dispatch(setMemo(res));
+      } catch (err) {
+        alert(err);
+      }
+    };
+    getMemos();
+  }, [dispatch]);
+
+  useEffect(() => {
+    const activeIndex = memos.findIndex((e) => e._id === memoId);
+    setActiveIndex(activeIndex);
+  }, [navigate]);
+
+  //メモ追加
+  const addMemo = async () => {
+    try {
+      const res = await memoApi.create();
+      const newMemos = [res, ...memos];
+      dispatch(setMemo(newMemos));
+      navigate(`memo/${res._id}`);
+    } catch (error) {
+      alert(error);
+    }
+  };
+
   return (
     <Drawer
       contaier={window.document.body}
@@ -43,7 +81,7 @@ const Sidebar = () => {
             }}
           >
             <Typography variant="body2" fontWeight="700">
-              SyoInoue
+              {user.username}
             </Typography>
             <IconButton onClick={logout}>
               <LogoutOutlindIcon />
@@ -78,11 +116,24 @@ const Sidebar = () => {
             <Typography variant="body2" fontWeight="700">
               プライベート
             </Typography>
-            <IconButton>
+            <IconButton onClick={() => addMemo()}>
               <AddBoxOutlindIcon fontSize="small" />
             </IconButton>
           </Box>
         </ListItemButton>
+        {memos.map((item, index) => (
+          <ListItemButton
+            sx={{ pl: "20px" }}
+            component={Link}
+            to={`/memo/${item._id}`}
+            key={item._id}
+            selected={index === activeIndex}
+          >
+            <Typography>
+              {item.icon} {item.title}
+            </Typography>
+          </ListItemButton>
+        ))}
       </List>
     </Drawer>
   );
